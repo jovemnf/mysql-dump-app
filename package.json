@@ -1,10 +1,17 @@
 {
     "name": "mysql-dump-app",
     "version": "1.0.0",
-    "description": "Create a DUMP from MySQL with control of views, routines and schema",
+    "description": "Backup MySQL com controle de views, rotinas, schema e dados",
     "main": "dist/cjs.js",
     "module": "dist/es.js",
+    "types": "dist/mysql-dump-app.d.ts",
     "typings": "dist/mysql-dump-app.d.ts",
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE.md",
+        "exemplos"
+    ],
     "scripts": {
         "pretest": "ts-node -P ./tsconfig.json --files ./test/scripts/initDb.ts",
         "pretest-prod": "ts-node -P ./tsconfig.json --files ./test/scripts/initDb.ts",
@@ -19,11 +26,8 @@
         "lint": "eslint src test --ext \".ts\"",
         "typecheck": "tsc --noEmit",
         "start": "ts-node -P ./tsconfig.json --files ./test/scripts/launch.ts",
-        "ci": "yarn lint --quiet && yarn build"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/jovemnf/mysql-dump-app.git"
+        "ci": "yarn lint --quiet && yarn build",
+        "prepublishOnly": "npm run build"
     },
     "keywords": [
         "backup",
@@ -35,12 +39,8 @@
         "backup",
         "database"
     ],
-    "author": "Brad Zacher",
+    "author": "Wallace Silva",
     "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/jovemnf/mysql-dump-app/issues"
-    },
-    "homepage": "https://github.com/jovemnf/mysql-dump-app",
     "dependencies": {
         "deepmerge": "^3.2.0",
         "mysql2": "^2.1.0",

@@ -1,11 +1,32 @@
-**/*
-!dist/cjs.js
-!dist/es.js
-!dist/mysqldump.d.ts
-!package.json
-!README.md
-!LICENSE.md
-!COMO_ATUALIZAR_NA_APLICACAO.md
-!NOVAS_FUNCIONALIDADES.md
-!ATUALIZACAO_MYSQLDUMP.md
-!COMO_EXECUTAR_BACKUP.md
+# Tudo ignorado por padrão; o que publicar é definido pelo campo "files" no package.json
+# (Se "files" não estiver definido, descomente abaixo para publicar só o essencial.)
+# **/*
+# !dist/
+# !package.json
+# !README.md
+# !LICENSE.md
+# !exemplos/
+
+# Itens que nunca devem ir para o npm
+node_modules/
+coverage/
+build-decl/
+*.log
+.git/
+.idea/
+test/
+*.test.ts
+*.spec.ts
+jest.json
+tsconfig.json
+tsconfig.build.json
+rollup.config.js
+example-usage.ts
+debug-test.js
+teste.js
+update-mysqldump-app.js
+COMO_ATUALIZAR_NA_APLICACAO.md
+ATUALIZACAO_MYSQLDUMP.md
+COMO_EXECUTAR_BACKUP.md
+NOVAS_FUNCIONALIDADES.md
+PUBLISH.md
