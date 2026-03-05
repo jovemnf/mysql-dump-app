@@ -1,0 +1,11 @@
+**/*
+!dist/cjs.js
+!dist/es.js
+!dist/mysqldump.d.ts
+!package.json
+!README.md
+!LICENSE.md
+!COMO_ATUALIZAR_NA_APLICACAO.md
+!NOVAS_FUNCIONALIDADES.md
+!ATUALIZACAO_MYSQLDUMP.md
+!COMO_EXECUTAR_BACKUP.md
