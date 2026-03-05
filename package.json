@@ -1,7 +1,7 @@
 {
     "name": "mysql-dump-app",
     "version": "1.0.0",
-    "description": "Create a DUMP from MySQL - backup com controle de views, rotinas e schema",
+    "description": "Create a DUMP from MySQL with control of views, routines and schema",
     "main": "dist/cjs.js",
     "module": "dist/es.js",
     "typings": "dist/mysql-dump-app.d.ts",
@@ -23,7 +23,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/your-org/mysql-dump-app.git"
+        "url": "git+https://github.com/jovemnf/mysql-dump-app.git"
     },
     "keywords": [
         "backup",
@@ -38,9 +38,9 @@
     "author": "Brad Zacher",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/your-org/mysql-dump-app/issues"
+        "url": "https://github.com/jovemnf/mysql-dump-app/issues"
     },
-    "homepage": "https://github.com/your-org/mysql-dump-app",
+    "homepage": "https://github.com/jovemnf/mysql-dump-app",
     "dependencies": {
         "deepmerge": "^3.2.0",
         "mysql2": "^2.1.0",

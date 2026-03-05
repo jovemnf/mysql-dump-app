@@ -1,464 +1,114 @@
 # mysql-dump-app
 
-Create a backup of a MySQL database, com controle de views, rotinas, schema e dados.
+Biblioteca Node.js para gerar backup (dump) de bancos MySQL com controle fino do que entra no arquivo: schema, dados, views, triggers e rotinas (procedures e functions). Pensada para quem precisa escolher tabelas, definir a ordem das views ou exportar só rotinas, por exemplo.
 
-## Installation
-
-```bash
-$ npm install mysql-dump-app
-```
-
-Se usar TypeScript, instale também:
+## Instalação
 
 ```bash
-$ npm install @types/node
+npm install mysql-dump-app
 ```
 
-## Usage
+## Uso básico
+
+Informe a conexão e, se quiser, o caminho do arquivo. O resto usa padrões sensatos (schema + dados + triggers + rotinas).
+
+```javascript
+const mysqlDumpApp = require('mysql-dump-app');
+
+await mysqlDumpApp({
+    connection: {
+        host: 'localhost',
+        user: 'root',
+        password: 'sua_senha',
+        database: 'meu_banco',
+    },
+    dumpToFile: './backup.sql',
+});
+```
+
+Para receber o resultado em memória em vez de gravar em arquivo, omita `dumpToFile`:
+
+```javascript
+const result = await mysqlDumpApp({
+    connection: { host: '...', user: '...', password: '...', database: '...' },
+});
+
+console.log(result.dump.schema);  // SQL do schema
+console.log(result.dump.data);    // SQL dos dados
+console.log(result.dump.trigger);  // SQL dos triggers
+console.log(result.dump.routine);  // SQL das procedures/functions
+console.log(result.tables);        // lista de tabelas processadas
+```
+
+## O que você pode controlar
+
+- **Schema** – Incluir ou não as definições (CREATE TABLE e CREATE VIEW). Opção de pular views (`schema.view: false`).
+- **Views** – Lista e ordem das views no dump (`dump.views: ['view_a', 'view_b']`), útil quando uma view depende de outra.
+- **Tabelas** – Só algumas tabelas ou “todas exceto” (`dump.tables` + `dump.excludeTables`).
+- **Dados** – Incluir ou não os INSERTs; filtros por tabela (`dump.data.where`).
+- **Triggers** – Incluir ou não os triggers.
+- **Rotinas** – Incluir procedures e/ou functions, com opções de DEFINER e DROP IF EXISTS.
+- **Arquivo** – Gravar em arquivo (`dumpToFile`) e, se quiser, comprimir (`compressFile: true`).
+
+A referência completa das opções está nos tipos TypeScript em [`dist/mysql-dump-app.d.ts`](./dist/mysql-dump-app.d.ts) (gerado no build).
+
+## Exemplos prontos
+
+A pasta **[`exemplos/`](./exemplos)** traz vários cenários em Markdown com código que você pode copiar e colar:
+
+| Exemplo | Descrição |
+|--------|------------|
+| [01-apenas-rotinas](./exemplos/01-apenas-rotinas.md) | Só stored procedures e/ou functions |
+| [02-apenas-views](./exemplos/02-apenas-views.md) | Só o schema das views |
+| [03-apenas-dados](./exemplos/03-apenas-dados.md) | Só os dados (INSERTs), com opção de WHERE |
+| [04-apenas-schema](./exemplos/04-apenas-schema.md) | Só estrutura (tabelas + views) |
+| [05-schema-sem-views](./exemplos/05-schema-sem-views.md) | Schema só com tabelas, sem views |
+| [06-rotinas-e-tabelas](./exemplos/06-rotinas-e-tabelas.md) | Rotinas junto com schema e/ou dados |
+| [07-tabelas-especificas](./exemplos/07-tabelas-especificas.md) | Whitelist ou blacklist de tabelas |
+| [08-views-ordem-customizada](./exemplos/08-views-ordem-customizada.md) | Views em ordem definida (dependências) |
+| [09-backup-completo](./exemplos/09-backup-completo.md) | Backup completo com compactação |
+
+Em todos os exemplos, basta trocar `connection` pelos dados do seu banco.
+
+## Opções principais (resumo)
+
+### Conexão (`connection`)
+
+- `host`, `port`, `user`, `password`, `database` (obrigatórios na prática)
+- `charset`, `ssl` (opcionais)
+
+### Dump (`dump`)
+
+- **`tables`** – Lista de tabelas. Com `excludeTables: false` = só essas (whitelist); com `excludeTables: true` = todas exceto essas (blacklist).
+- **`views`** – Lista de views na ordem desejada. Se tiver itens, só essas views entram no schema, nessa ordem. Vazio = todas as views.
+- **`schema`** – `false` para não incluir schema. Se for objeto, pode ter `view: false` para não incluir views, ou opções de formatação/tabela/view.
+- **`data`** – `false` para não incluir dados. Se for objeto, aceita `where`, `maxRowsPerInsertStatement`, `includeViewData`, etc.
+- **`trigger`** – `false` para não incluir triggers.
+- **`routine`** – `false` para não incluir rotinas. Se for objeto: `includeProcedures`, `includeFunctions`, `definer`, `dropIfExist`, `delimiter`.
+
+### Saída
+
+- **`dumpToFile`** – Caminho do arquivo (ex.: `'./backup.sql'` ou `'./backup.sql.gz'`).
+- **`compressFile`** – `true` para gerar arquivo gzip.
+
+## Resultado (`DumpReturn`)
+
+O retorno da função tem a forma:
+
+- **`dump.schema`** – String SQL do schema ou `null`.
+- **`dump.data`** – String SQL dos dados ou `null`.
+- **`dump.trigger`** – String SQL dos triggers ou `null`.
+- **`dump.routine`** – String SQL das rotinas ou `null`.
+- **`tables`** – Array com as tabelas/views processadas (nome, schema, data, etc.).
+
+## TypeScript
+
+O pacote exporta tipos. Após o build, as declarações ficam em `dist/mysql-dump-app.d.ts`. Em projeto TypeScript você pode importar:
 
 ```typescript
 import mysqlDumpApp from 'mysql-dump-app';
-// ou const mysqlDumpApp = require('mysql-dump-app')
-
-// dump the result straight to a file
-mysqlDumpApp({
-    connection: {
-        host: 'localhost',
-        user: 'root',
-        password: '123456',
-        database: 'my_database',
-    },
-    dumpToFile: './dump.sql',
-});
-
-// dump the result straight to a compressed file
-mysqlDumpApp({
-    connection: {
-        host: 'localhost',
-        user: 'root',
-        password: '123456',
-        database: 'my_database',
-    },
-    dumpToFile: './dump.sql.gz',
-    compressFile: true,
-});
-
-// return the dump from the function and not to a file
-const result = await mysqlDumpApp({
-    connection: {
-        host: 'localhost',
-        user: 'root',
-        password: '123456',
-        database: 'my_database',
-    },
-});
 ```
 
-## Result
+## Licença
 
-The returned result contains the dump property, which is split into schema and data.
-
-```TS
-export default interface DumpReturn {
-    /**
-     * The result of the dump
-     */
-    dump : {
-        /**
-         * The concatenated SQL schema dump for the entire database.
-         * Null if configured not to dump.
-         */
-        schema : string | null
-        /**
-         * The concatenated SQL data dump for the entire database.
-         * Null if configured not to dump.
-         */
-        data : string | null
-        /**
-         * The concatenated SQL trigger dump for the entire database.
-         * Null if configured not to dump.
-         */
-        trigger : string | null
-    }
-    tables : Table[]
-}
-
-```
-
-## Options
-
-All the below options are documented in the [typescript declaration file](./dist/mysql-dump-app.d.ts):
-
-### Views: incluir ou não e em qual ordem
-
-- **`dump.schema.view`** define se o dump do schema inclui views:
-  - **Objeto** (padrão): views são incluídas; o objeto define opções (createOrReplace, definer, algorithm, sqlSecurity).
-  - **`false`**: views não são incluídas no dump do schema.
-- **`dump.views`** (mesmo padrão de `dump.tables`): quando views estão incluídas, esta lista opcional define **quais** views e **em qual ordem** (útil para dependências entre views). Se tiver itens, só essas views são incluídas, na ordem informada; se vazio ou não informado, todas as views são incluídas na ordem do banco.
-
-```TS
-export interface ConnectionOptions {
-    /**
-     * The database host to connect to.
-     * Defaults to 'localhost'.
-     */
-    host?: string;
-    /**
-     * The port on the host to connect to.
-     * Defaults to 3306.
-     */
-    port?: number;
-    /**
-     * The database to dump.
-     */
-    database: string;
-    /**
-     * The DB username to use to connect.
-     */
-    user: string;
-    /**
-     * The password to use to connect.
-     */
-    password: string;
-    /**
-     * The charset to use for the connection.
-     * Defaults to 'UTF8_GENERAL_CI'.
-     */
-    charset?: string;
-    /**
-     * SSL configuration options.
-     * Passing 'Amazon RDS' will use Amazon's RDS CA certificate.
-     *
-     * Otherwise you can pass the options which get passed to tls.createSecureContext.
-     * See: https://nodejs.org/api/tls.html#tls_tls_createsecurecontext_options
-     */
-    ssl?: 'Amazon RDS' | null | {
-        /**
-         * Optionally override the trusted CA certificates. Default is to trust the well-known CAs curated by Mozilla.
-         */
-        ca?: string | Buffer;
-        /**
-         * Optional cert chains in PEM format.
-         */
-        cert?: string | Buffer;
-        /**
-         * Optional cipher suite specification, replacing the default.
-         */
-        ciphers?: string;
-        /**
-         * Optional PEM formatted CRLs (Certificate Revocation Lists).
-         */
-        crl?: string | Array<string>;
-        /**
-         * Attempt to use the server's cipher suite preferences instead of the client's.
-         */
-        honorCipherOrder?: boolean;
-        /**
-         * Optional private keys in PEM format.
-         */
-        key?: string | Buffer;
-        /**
-         * Optional shared passphrase used for a single private key and/or a PFX.
-         */
-        passphrase?: string;
-        /**
-         * Optional PFX or PKCS12 encoded private key and certificate chain.
-         */
-        pfx?: string | Buffer;
-        /**
-         * DO NOT USE THIS OPTION UNLESS YOU REALLY KNOW WHAT YOU ARE DOING!!!
-         * Set to false to allow connection to a MySQL server without properly providing the appropraite CA to trust.
-         */
-        rejectUnauthorized?: boolean;
-    };
-}
-export interface SchemaDumpOptions {
-    /**
-     * True to include autoincrement values in schema, false otherwise.
-     * Defaults to true.
-     */
-    autoIncrement?: boolean;
-    /**
-     * True to include engine values in schema, false otherwise.
-     * Defaults to true.
-     */
-    engine?: boolean;
-    /**
-     * True to run a sql formatter over the output, false otherwise.
-     * Defaults to true.
-     */
-    format?: boolean;
-    /**
-     * Options for table dumps
-     */
-    table?: {
-        /**
-         * Guard create table calls with an "IF NOT EXIST"
-         * Defaults to true.
-         */
-        ifNotExist?: boolean;
-        /**
-         * Drop tables before creation (overrides `ifNotExist`).
-         * Defaults to false.
-         */
-        dropIfExist?: boolean;
-        /**
-         * Include the `DEFAULT CHARSET = x` at the end of the table definition
-         * Set to true to include the value form the DB.
-         * Set to false to exclude it altogether.
-         * Set to a string to explicitly set the charset.
-         * Defaults to true.
-         */
-        charset?: boolean | string;
-    };
-    /**
-     * Incluir ou não views no dump do schema.
-     * - Objeto: inclui views e aplica as opções abaixo (createOrReplace, definer, etc.).
-     * - false: não inclui views no dump.
-     * Defaults a objeto (views incluídas).
-     */
-    view?:
-        | false
-        | {
-              /**
-               * Uses `CREATE OR REPLACE` to define views.
-               * Defaults to true.
-               */
-              createOrReplace?: boolean;
-              /**
-               * Include the `DEFINER = {\`user\`@\`host\` | CURRENT_USER}` in the view definition or not
-               * Defaults to false.
-               */
-              definer?: boolean;
-              /**
-               * Include the `ALGORITHM = {UNDEFINED | MERGE | TEMPTABLE}` in the view definition or not
-               * Defaults to false.
-               */
-              algorithm?: boolean;
-              /**
-               * Include the `SQL SECURITY {DEFINER | INVOKER}` in the view definition or not
-               * Defaults to false.
-               */
-              sqlSecurity?: boolean;
-          };
-}
-export interface TriggerDumpOptions {
-    /**
-     * The temporary delimiter to use between statements.
-     * Set to false to not use delmiters
-     * Defaults to ';;'.
-     */
-    delimiter?: string | false;
-    /**
-     * Drop triggers before creation.
-     * Defaults to false.
-     */
-    dropIfExist?: boolean;
-    /**
-     * Include the `DEFINER = {\`user\`@\`host\` | CURRENT_USER}` in the view definition or not
-     * Defaults to false.
-     */
-    definer?: boolean;
-}
-export interface DataDumpOptions {
-    /**
-     * True to run a sql formatter over the output, false otherwise.
-     * Defaults to true.
-     */
-    format?: boolean;
-    /**
-     * Include file headers in output
-     * Defaults to true.
-     */
-    verbose?: boolean;
-    /**
-     * Use a read lock during the data dump (see: https://dev.mysql.com/doc/refman/5.7/en/replication-solutions-backups-read-only.html)
-     * Defaults to false.
-     */
-    lockTables?: boolean;
-    /**
-     * Dump data from views.
-     * Defaults to false.
-     */
-    includeViewData?: boolean;
-    /**
-     * Maximum number of rows to include in each multi-line insert statement
-     * Defaults to 1 (i.e. new statement per row).
-     */
-    maxRowsPerInsertStatement?: number;
-    /**
-     * True to return the data in a function, false to not.
-     * This is useful in databases with a lot of data.
-     *
-     * We stream data from the DB to reduce the memory footprint.
-     * However note that if you want the result returned from the function,
-     * this will result in a larger memory footprint as the string has to be stored in memory.
-     *
-     * Defaults to false if dumpToFile is truthy, or true if not dumpToFile is falsey.
-     */
-    returnFromFunction?: boolean;
-    /**
-     * A map of tables to additional where strings to add.
-     * Use this to limit the number of data that is dumped.
-     * Defaults to no limits
-     */
-    where?: {
-        [k: string]: string;
-    };
-}
-export interface DumpOptions {
-    /**
-     * The list of tables that you want to dump.
-     * Defaults to all tables (signalled by passing an empty array).
-     */
-    tables?: Array<string>;
-    /**
-     * True to use the `tables` options as a blacklist, false to use it as a whitelist.
-     * Defaults to false.
-     */
-    excludeTables?: boolean;
-    /**
-     * Lista opcional de views a incluir no dump, na ordem desejada (mesmo padrão de `tables`).
-     * Só aplicado quando schema.view não é false. Se tiver itens, usa só essa lista na ordem dada; se vazio, todas as views.
-     */
-    views?: Array<string>;
-    /**
-     * Explicitly set to false to not include the schema in the dump.
-     * Defaults to including the schema.
-     */
-    schema?: false | SchemaDumpOptions;
-    /**
-     * Explicitly set to false to not include data in the dump.
-     * Defaults to including the data.
-     */
-    data?: false | DataDumpOptions;
-    /**
-     * Explicitly set to false to not include triggers in the dump.
-     * Defaults to including the triggers.
-     */
-    trigger?: false | TriggerDumpOptions;
-}
-export interface Options {
-    /**
-     * Database connection options
-     */
-    connection: ConnectionOptions;
-    /**
-     * Dump configuration options
-     */
-    dump?: DumpOptions;
-    /**
-     * Set to a path to dump to a file.
-     * Exclude to just return the string.
-     */
-    dumpToFile?: string | null;
-    /**
-     * Should the output file be compressed (gzip)?
-     * Defaults to false.
-     */
-    compressFile?: boolean;
-}
-export interface ColumnList {
-    /**
-     * Key is the name of the column
-     */
-    [k: string]: {
-        /**
-         * The type of the column as reported by the underlying DB.
-         */
-        type: string;
-        /**
-         * True if the column is nullable, false otherwise.
-         */
-        nullable: boolean;
-    };
-}
-export interface Table {
-    /**
-     * The name of the table.
-     */
-    name: string;
-    /**
-     * The raw SQL schema dump for the table.
-     * Null if configured to not dump.
-     */
-    schema: string | null;
-    /**
-     * The raw SQL data dump for the table.
-     * Null if configured to not dump.
-     */
-    data: string | null;
-    /**
-     * The list of column definitions for the table.
-     */
-    columns: ColumnList;
-    /**
-     * An ordered list of columns (for consistently outputing as per the DB definition)
-     */
-    columnsOrdered: Array<string>;
-    /**
-     * True if the table is actually a view, false otherwise.
-     */
-    isView: boolean;
-    /**
-     * A list of triggers attached to the table
-     */
-    triggers: Array<string>;
-}
-export interface DumpReturn {
-    /**
-     * The result of the dump
-     */
-    dump: {
-        /**
-         * The concatenated SQL schema dump for the entire database.
-         * Null if configured not to dump.
-         */
-        schema: string | null;
-        /**
-         * The concatenated SQL data dump for the entire database.
-         * Null if configured not to dump.
-         */
-        data: string | null;
-        /**
-         * The concatenated SQL trigger dump for the entire database.
-         * Null if configured not to dump.
-         */
-        trigger: string | null;
-    };
-    tables: Array<Table>;
-}
-export default function main(inputOptions: Options): Promise<DumpReturn>;
-
-export as namespace mysqlDumpApp;
-```
-
----
-
-The MIT [License](./LICENSE.md)
-
-## Contributing
-
-### Local Installation
-
-Make sure to first install all the required development dependencies:
-
-```shell
-yarn
-// or
-npm install .
-```
-
-### Linting
-
-We use [eslint](https://www.npmjs.com/package/eslint) in conjunction with [typescript-eslint-parser](https://www.npmjs.com/package/typescript-eslint-parser) for code linting.
-
-PRs are required to pass the linting with no errors and preferrably no warnings.
-
-### Testing
-
-Tests can be run via the `test` script - `yarn test` / `npm test`.
-
-Additionally it's required that you do a build and run your test against the public package to ensure the build doesn't cause regressions - `yarn run test-prod` / `npm run test-prod`.
-
-PRs are required to maintain the 100% test coverage, and all tests must pass successfully.
+MIT.
